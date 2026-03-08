@@ -30,7 +30,8 @@
       "expo-localization",
       "expo-router",
       "expo-secure-store",
-      "expo-sqlite"
+      "expo-sqlite",
+      "expo-video"
     ],
     "android": {
       "adaptiveIcon": {
