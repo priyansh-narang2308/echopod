@@ -5,11 +5,20 @@ import "../../global.css"
 import { ClerkProvider, useAuth } from '@clerk/expo'
 import { tokenCache } from '@clerk/expo/token-cache'
 
+import { useReactQueryDevTools } from '@dev-plugins/react-query';
+
+import {
+    QueryClient,
+    QueryClientProvider,
+} from '@tanstack/react-query'
+
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!
 
 if (!publishableKey) {
     throw new Error('Add your Clerk Publishable Key to the .env file')
 }
+
+const queryClient = new QueryClient()
 
 function RootStack() {
 
@@ -25,7 +34,7 @@ function RootStack() {
             </Stack.Protected>
             <Stack.Protected guard={isSignedIn} >
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-            <Stack.Screen name="profile" options={{ presentation: 'modal', headerShown: false }} />
+                <Stack.Screen name="profile" options={{ presentation: 'modal', headerShown: false }} />
             </Stack.Protected>
             <Stack.Screen name="index" options={{ headerShown: false }} />
         </Stack>
@@ -33,10 +42,14 @@ function RootStack() {
 }
 
 const RootLayout = () => {
+    useReactQueryDevTools(queryClient);
+
     return (
-        <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-            <RootStack />
-        </ClerkProvider>
+        <QueryClientProvider client={queryClient}>
+            <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+                <RootStack />
+            </ClerkProvider>
+        </QueryClientProvider>
     )
 }
 
