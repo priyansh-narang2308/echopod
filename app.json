@@ -14,6 +14,20 @@
     "ios": {
       "supportsTablet": true
     },
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "enableBackgroundPlayback": true
+        }
+      ],
+      "@clerk/expo",
+      "expo-web-browser",
+      "expo-localization",
+      "expo-router",
+      "expo-secure-store",
+      "expo-sqlite"
+    ],
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
