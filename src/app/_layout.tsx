@@ -36,6 +36,7 @@ function RootStack() {
             <Stack.Protected guard={isSignedIn} >
                 <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
                 <Stack.Screen name="profile" options={{ presentation: 'modal', headerShown: false }} />
+                <Stack.Screen name="player" options={{ presentation: "fullScreenModal", headerShown: false }} />
             </Stack.Protected>
             <Stack.Screen name="index" options={{ headerShown: false }} />
         </Stack>
