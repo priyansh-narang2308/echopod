@@ -33,7 +33,7 @@ export default function Home() {
         <FlatList
             data={data?.feeds}
             renderItem={({ item }) => (
-                <Text>{item.title}</Text>
+                <Text className=''>{item.title}</Text>
             )}
             contentInsetAdjustmentBehavior="automatic"
         />
