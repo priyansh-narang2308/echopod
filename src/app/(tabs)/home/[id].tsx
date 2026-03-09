@@ -61,7 +61,15 @@ const PodcastDetails = () => {
   });
 
   const podcast = data?.feed;
-  const episodes: Episode[] = episodesData?.pages.flatMap((p) => p.items ?? []) ?? [];
+  const episodes: Episode[] = (() => {
+    const seen = new Set<string>();
+    return (episodesData?.pages ?? []).flatMap((p) => p.items ?? []).filter((ep) => {
+      const key = ep.guid || String(ep.id);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  })();
   const hasMore = hasNextPage ?? false;
 
   if (isLoading) {
