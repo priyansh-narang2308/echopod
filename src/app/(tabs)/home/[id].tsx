@@ -7,16 +7,31 @@ import {
   ActivityIndicator,
   StyleSheet,
   Dimensions,
+  NativeSyntheticEvent,
+  NativeScrollEvent,
 } from "react-native";
 import React from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
-import { fetchFeedById } from "@/services/podcast-index";
+import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
+import { fetchFeedById, fetchEpisodesByFeedId } from "@/services/podcast-index";
 import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { Episode } from "@/types";
 
 const { width } = Dimensions.get("window");
+
+function formatDuration(seconds: number | null): string {
+  if (!seconds) return "";
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+function stripHtml(html: string): string {
+  return html?.replace(/<[^>]+>/g, "").trim() ?? "";
+}
 
 const PodcastDetails = () => {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -28,7 +43,26 @@ const PodcastDetails = () => {
     queryFn: () => fetchFeedById(id),
   });
 
+  const {
+    data: episodesData,
+    isLoading: episodesLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["episodes", id],
+    queryFn: ({ pageParam }) => fetchEpisodesByFeedId(id, pageParam as number | undefined),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (lastPage) => {
+      const items = lastPage.items ?? [];
+      if (items.length < 10) return undefined;
+      return items[items.length - 1].datePublished;
+    },
+  });
+
   const podcast = data?.feed;
+  const episodes: Episode[] = episodesData?.pages.flatMap((p) => p.items ?? []) ?? [];
+  const hasMore = hasNextPage ?? false;
 
   if (isLoading) {
     return (
@@ -51,9 +85,15 @@ const PodcastDetails = () => {
     );
   }
 
-  const categories = podcast.categories
-    ? Object.values(podcast.categories)
-    : [];
+  const categories = podcast.categories ? Object.values(podcast.categories) : [];
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+    const distanceFromBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
+    if (distanceFromBottom < 300 && hasMore && !isFetchingNextPage) {
+      fetchNextPage();
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -66,8 +106,10 @@ const PodcastDetails = () => {
 
       <ScrollView
         style={styles.scrollView}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 48 }}
         showsVerticalScrollIndicator={false}
+        scrollEventThrottle={300}
+        onScroll={handleScroll}
       >
         <View style={styles.heroContainer}>
           <Image
@@ -76,12 +118,12 @@ const PodcastDetails = () => {
             resizeMode="cover"
           />
           <LinearGradient
-            colors={["transparent", "rgba(0,0,0,0.5)", "rgba(0,0,0,0.85)"]}
+            colors={["transparent", "rgba(0,0,0,0.4)", "rgba(0,0,0,0.88)"]}
             style={StyleSheet.absoluteFillObject}
           />
         </View>
 
-        <View style={styles.card}>
+        <View style={styles.sheet}>
           <View style={styles.titleRow}>
             <Image
               source={{ uri: podcast.image || podcast.artwork }}
@@ -95,77 +137,95 @@ const PodcastDetails = () => {
               <Text style={styles.author} numberOfLines={1}>
                 {podcast.author || podcast.ownerName || "Unknown"}
               </Text>
-            </View>
-          </View>
-
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <Ionicons name="mic-outline" size={20} color="#FF6A00" />
-              <Text style={styles.statNumber}>{podcast.episodeCount ?? "—"}</Text>
-              <Text style={styles.statLabel}>Episodes</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Ionicons name="language-outline" size={20} color="#FF6A00" />
-              <Text style={styles.statNumber}>
-                {podcast.language?.toUpperCase() || "—"}
-              </Text>
-              <Text style={styles.statLabel}>Language</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <Ionicons
-                name={podcast.explicit ? "warning-outline" : "shield-checkmark-outline"}
-                size={20}
-                color={podcast.explicit ? "#ef4444" : "#22c55e"}
-              />
-              <Text style={styles.statNumber}>
-                {podcast.explicit ? "Explicit" : "Clean"}
-              </Text>
-              <Text style={styles.statLabel}>Content</Text>
+              <View style={styles.inlineStats}>
+                <View style={styles.inlineStat}>
+                  <Ionicons name="mic-outline" size={12} color="#FF6A00" />
+                  <Text style={styles.inlineStatText}>{podcast.episodeCount ?? "—"} eps</Text>
+                </View>
+                <View style={styles.inlineStat}>
+                  <Ionicons name="language-outline" size={12} color="#FF6A00" />
+                  <Text style={styles.inlineStatText}>{podcast.language?.toUpperCase() || "—"}</Text>
+                </View>
+                <View style={styles.inlineStat}>
+                  <Ionicons
+                    name={podcast.explicit ? "warning-outline" : "shield-checkmark-outline"}
+                    size={12}
+                    color={podcast.explicit ? "#ef4444" : "#22c55e"}
+                  />
+                  <Text style={[styles.inlineStatText, { color: podcast.explicit ? "#ef4444" : "#22c55e" }]}>
+                    {podcast.explicit ? "Explicit" : "Clean"}
+                  </Text>
+                </View>
+              </View>
             </View>
           </View>
 
           {categories.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Categories</Text>
-              <View style={styles.categoryRow}>
-                {categories.map((cat) => (
-                  <View key={cat} style={styles.categoryPill}>
-                    <Text style={styles.categoryText}>{cat}</Text>
-                  </View>
-                ))}
-              </View>
+            <View style={styles.categoryRow}>
+              {categories.slice(0, 4).map((cat) => (
+                <View key={cat} style={styles.categoryPill}>
+                  <Text style={styles.categoryText}>{cat}</Text>
+                </View>
+              ))}
             </View>
           )}
 
           {podcast.description ? (
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>About</Text>
-              <Text style={styles.description}>{podcast.description}</Text>
+              <Text style={styles.description} numberOfLines={5}>
+                {stripHtml(podcast.description)}
+              </Text>
             </View>
           ) : null}
 
-          {(podcast.ownerName || podcast.author) && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Creator</Text>
-              <View style={styles.ownerRow}>
-                <View style={styles.ownerAvatar}>
-                  <Text style={styles.ownerInitial}>
-                    {(podcast.ownerName || podcast.author || "?").charAt(0).toUpperCase()}
-                  </Text>
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Episodes</Text>
+            {episodesLoading ? (
+              <ActivityIndicator color="#FF6A00" style={{ marginTop: 16 }} />
+            ) : episodes.length === 0 ? (
+              <Text style={styles.emptyText}>No episodes found</Text>
+            ) : (
+              episodes.map((ep: Episode, idx: number) => (
+                <View key={ep.guid || `${ep.id}-${idx}`}>
+                  <View style={styles.episodeRow}>
+                    <View style={styles.episodeMeta}>
+                      <Text style={styles.episodeDate}>{ep.datePublishedPretty}</Text>
+                      <Text style={styles.episodeTitle} numberOfLines={2}>
+                        {ep.title}
+                      </Text>
+                      <Text style={styles.episodeDesc} numberOfLines={2}>
+                        {stripHtml(ep.description)}
+                      </Text>
+                      {ep.duration ? (
+                        <View style={styles.durationPill}>
+                          <Ionicons name="play" size={9} color="#555" />
+                          <Text style={styles.durationText}>{formatDuration(ep.duration)}</Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    {(ep.image || podcast.image) ? (
+                      <Image
+                        source={{ uri: ep.image || podcast.image }}
+                        style={styles.episodeImage}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={[styles.episodeImage, styles.episodeImagePlaceholder]}>
+                        <Ionicons name="mic" size={20} color="#ccc" />
+                      </View>
+                    )}
+                  </View>
+                  {idx < episodes.length - 1 && <View style={styles.episodeDivider} />}
                 </View>
-                <View>
-                  <Text style={styles.ownerName}>
-                    {podcast.ownerName || podcast.author}
-                  </Text>
-                  {podcast.ownerName && podcast.author && podcast.ownerName !== podcast.author && (
-                    <Text style={styles.ownerSub}>{podcast.author}</Text>
-                  )}
-                </View>
-              </View>
-            </View>
-          )}
+              ))
+            )}
+
+            {isFetchingNextPage && (
+              <ActivityIndicator color="#FF6A00" size="small" style={{ marginTop: 20, marginBottom: 8 }} />
+            )}
+          </View>
+
         </View>
       </ScrollView>
     </View>
@@ -208,15 +268,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     fontSize: 14,
   },
-  heroContainer: {
-    width: "100%",
-    height: width * 0.72,
-    position: "relative",
-  },
-  heroImage: {
-    width: "100%",
-    height: "100%",
-  },
   backButton: {
     position: "absolute",
     left: 16,
@@ -224,157 +275,198 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: "rgba(0,0,0,0.4)",
+    backgroundColor: "rgba(0,0,0,0.42)",
     alignItems: "center",
     justifyContent: "center",
   },
   scrollView: {
     flex: 1,
   },
-  card: {
+  heroContainer: {
+    width: "100%",
+    height: width * 0.72,
+  },
+  heroImage: {
+    width: "100%",
+    height: "100%",
+  },
+  // The white sheet that slides up over the hero
+  sheet: {
     backgroundColor: "#fff",
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    padding: 20,
-    marginTop: -20,
+    marginTop: -24,
+    paddingHorizontal: 20,
+    paddingTop: 24,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: -4 },
     shadowOpacity: 0.06,
-    shadowRadius: 16,
-    elevation: 4,
-    minHeight: 600,
+    shadowRadius: 12,
+    elevation: 6,
   },
   titleRow: {
     flexDirection: "row",
     alignItems: "flex-start",
-    marginBottom: 20,
+    marginBottom: 16,
     gap: 14,
   },
   thumb: {
-    width: 80,
-    height: 80,
+    width: 84,
+    height: 84,
     borderRadius: 16,
     backgroundColor: "#f0f0f0",
   },
   titleMeta: {
     flex: 1,
     paddingTop: 2,
+    gap: 4,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "800",
     color: "#1A1C1E",
-    lineHeight: 26,
-    marginBottom: 6,
+    lineHeight: 24,
   },
   author: {
-    fontSize: 14,
+    fontSize: 13,
     color: "#6C757D",
     fontWeight: "500",
   },
-  subscribeBtn: {
-    borderRadius: 14,
-    overflow: "hidden",
-    marginBottom: 24,
-  },
-  subscribeGradient: {
+  inlineStats: {
     flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 14,
+    flexWrap: "wrap",
     gap: 8,
+    marginTop: 6,
   },
-  subscribeBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "700",
-  },
-  statsRow: {
+  inlineStat: {
     flexDirection: "row",
-    backgroundColor: "#F8F9FA",
-    borderRadius: 16,
-    paddingVertical: 16,
-    paddingHorizontal: 12,
-    marginBottom: 24,
-  },
-  statItem: {
-    flex: 1,
     alignItems: "center",
-    gap: 4,
+    gap: 3,
+    backgroundColor: "#F8F9FA",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: "#E9ECEF",
   },
-  statNumber: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#1A1C1E",
-  },
-  statLabel: {
+  inlineStatText: {
     fontSize: 11,
-    color: "#ADB5BD",
-    fontWeight: "500",
+    color: "#495057",
+    fontWeight: "600",
   },
-  statDivider: {
-    width: 1,
-    backgroundColor: "#E9ECEF",
-    marginVertical: 4,
+  categoryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 20,
+  },
+  categoryPill: {
+    backgroundColor: "#FFF3EB",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderWidth: 1,
+    borderColor: "#FFD6B8",
+  },
+  categoryText: {
+    color: "#FF6A00",
+    fontSize: 12,
+    fontWeight: "600",
   },
   section: {
     marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 20,
+    fontWeight: "800",
     color: "#1A1C1E",
-    marginBottom: 10,
+    marginBottom: 14,
   },
   description: {
     fontSize: 14,
     color: "#495057",
     lineHeight: 22,
   },
-  categoryRow: {
+  emptyText: {
+    fontSize: 14,
+    color: "#ADB5BD",
+    textAlign: "center",
+    marginTop: 16,
+  },
+  // Episode row
+  episodeRow: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
+    alignItems: "flex-start",
+    gap: 14,
+    paddingVertical: 14,
   },
-  categoryPill: {
-    backgroundColor: "#FFF3EB",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: "#FFD6B8",
+  episodeMeta: {
+    flex: 1,
+    gap: 4,
   },
-  categoryText: {
-    color: "#FF6A00",
+  episodeDate: {
+    fontSize: 12,
+    color: "#ADB5BD",
+    fontWeight: "500",
+    marginBottom: 2,
+  },
+  episodeTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1A1C1E",
+    lineHeight: 22,
+  },
+  episodeDesc: {
     fontSize: 13,
-    fontWeight: "600",
+    color: "#6C757D",
+    lineHeight: 18,
+    marginTop: 2,
   },
-  ownerRow: {
+  durationPill: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 4,
+    backgroundColor: "#F1F3F5",
+    alignSelf: "flex-start",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    marginTop: 8,
   },
-  ownerAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "#FF6A00",
+  durationText: {
+    fontSize: 12,
+    color: "#495057",
+    fontWeight: "600",
+  },
+  episodeImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 12,
+    backgroundColor: "#F1F3F5",
+  },
+  episodeImagePlaceholder: {
     alignItems: "center",
     justifyContent: "center",
   },
-  ownerInitial: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "700",
+  episodeDivider: {
+    height: 1,
+    backgroundColor: "#F1F3F5",
   },
-  ownerName: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1A1C1E",
+  loadMoreBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: "#FFD6B8",
+    backgroundColor: "#FFF8F4",
   },
-  ownerSub: {
-    fontSize: 13,
-    color: "#6C757D",
-    marginTop: 2,
+  loadMoreText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FF6A00",
   },
 });
