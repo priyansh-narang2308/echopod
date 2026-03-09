@@ -18,6 +18,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Episode } from "@/types";
+import { usePlayer } from "@/providers/player-provider";
 
 const { width } = Dimensions.get("window");
 
@@ -42,6 +43,8 @@ const PodcastDetails = () => {
     queryKey: ["feed", id],
     queryFn: () => fetchFeedById(id),
   });
+
+  const { setEpisode } = usePlayer()
 
   const {
     data: episodesData,
@@ -206,10 +209,10 @@ const PodcastDetails = () => {
                         {stripHtml(ep.description)}
                       </Text>
                       {ep.duration ? (
-                        <View style={styles.durationPill}>
+                        <Pressable onPress={() => { setEpisode(ep); router.push(`/player`) }} style={styles.durationPill}>
                           <Ionicons name="play" size={9} color="#555" />
                           <Text style={styles.durationText}>{formatDuration(ep.duration)}</Text>
-                        </View>
+                        </Pressable>
                       ) : null}
                     </View>
                     {(ep.image || podcast.image) ? (

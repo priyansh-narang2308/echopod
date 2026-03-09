@@ -11,6 +11,7 @@ import {
     QueryClient,
     QueryClientProvider,
 } from '@tanstack/react-query'
+import PlayerProvider from '@/providers/player-provider'
 
 const publishableKey = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY!
 
@@ -47,7 +48,9 @@ const RootLayout = () => {
     return (
         <QueryClientProvider client={queryClient}>
             <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-                <RootStack />
+                <PlayerProvider>
+                    <RootStack />
+                </PlayerProvider>
             </ClerkProvider>
         </QueryClientProvider>
     )
