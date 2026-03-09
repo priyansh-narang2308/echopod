@@ -1,9 +1,9 @@
 import { fetchTrending } from '@/services/podcast-index';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Button, FlatList, Text, View } from 'react-native';
+import PodcastComponent from '@/components/podcast-component';
 
 export default function Home() {
-
     const { isLoading, data, error } = useQuery({
         queryKey: ["trending"],
         queryFn: async () => await fetchTrending()
@@ -28,14 +28,23 @@ export default function Home() {
         )
     }
 
-
     return (
-        <FlatList
-            data={data?.feeds}
-            renderItem={({ item }) => (
-                <Text className=''>{item.title}</Text>
-            )}
-            contentInsetAdjustmentBehavior="automatic"
-        />
+        <View className="flex-1 bg-slate-50">
+            <FlatList
+                data={data?.feeds}
+                keyExtractor={(item) => item.id.toString()}
+                numColumns={2}
+                renderItem={({ item }) => (
+                    <PodcastComponent podcast={item} />
+                )}
+                columnWrapperStyle={{ gap: 12 }}
+                contentContainerStyle={{
+                    paddingHorizontal: 16,
+                    paddingBottom: 40,
+                }}
+                showsVerticalScrollIndicator={false}
+                contentInsetAdjustmentBehavior="automatic"
+            />
+        </View>
     );
 }

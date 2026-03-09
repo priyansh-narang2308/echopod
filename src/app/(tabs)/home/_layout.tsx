@@ -8,7 +8,10 @@ export default function HomeLayout() {
     const { user } = useUser();
 
     return (
-        <Stack screenOptions={{ headerLargeTitle: true }}>
+        <Stack screenOptions={{
+            headerLargeTitle: true,
+            headerTransparent: false
+        }}>
             <Stack.Screen
                 name="index"
                 options={{
