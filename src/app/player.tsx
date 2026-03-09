@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { StyleSheet } from 'react-native';
 import Slider from '@react-native-community/slider';
+import { useAudioPlayerStatus } from 'expo-audio';
 
 const { width } = Dimensions.get('window');
 const ARTWORK_SIZE = width * 0.8;
@@ -67,8 +68,10 @@ function MarqueeText({ text, style }: MarqueeTextProps) {
   );
 }
 
+
 const EpisodePlayer = () => {
-  const { episode } = usePlayer();
+  const { episode, player, togglePlayback } = usePlayer();
+  const status = useAudioPlayerStatus(player);
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -178,9 +181,10 @@ const EpisodePlayer = () => {
             <Text className="absolute text-white text-[9px] font-black">15</Text>
           </Pressable>
           <Pressable
+            onPress={togglePlayback}
             className="w-[72px] h-[72px] rounded-full bg-white/15 border border-white/30 items-center justify-center active:opacity-80"
           >
-            <Ionicons name="play" size={34} color="#fff" />
+            <Ionicons name={status.playing ? 'pause' : 'play'} size={34} color="#fff" />
           </Pressable>
 
           <Pressable className="items-center justify-center relative active:opacity-60">

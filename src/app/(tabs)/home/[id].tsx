@@ -19,6 +19,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Episode } from "@/types";
 import { usePlayer } from "@/providers/player-provider";
+import { useAudioPlayerStatus } from "expo-audio";
 
 const { width } = Dimensions.get("window");
 
@@ -44,7 +45,8 @@ const PodcastDetails = () => {
     queryFn: () => fetchFeedById(id),
   });
 
-  const { setEpisode } = usePlayer()
+  const { setEpisode, episode: activeEpisode, player, togglePlayback } = usePlayer()
+  const playerStatus = useAudioPlayerStatus(player)
 
   const {
     data: episodesData,
@@ -209,9 +211,38 @@ const PodcastDetails = () => {
                         {stripHtml(ep.description)}
                       </Text>
                       {ep.duration ? (
-                        <Pressable onPress={() => { setEpisode(ep); router.push(`/player`) }} style={styles.durationPill}>
-                          <Ionicons name="play" size={9} color="#555" />
-                          <Text style={styles.durationText}>{formatDuration(ep.duration)}</Text>
+                        <Pressable
+                          onPress={() => {
+                            const isActive = activeEpisode?.id === ep.id;
+                            if (isActive) {
+                              togglePlayback();
+                            } else {
+                              setEpisode(ep);
+                              router.push(`/player`);
+                            }
+                          }}
+                          style={[
+                            styles.durationPill,
+                            activeEpisode?.id === ep.id && styles.durationPillActive,
+                          ]}
+                        >
+                          <Ionicons
+                            name={
+                              activeEpisode?.id === ep.id && playerStatus.playing
+                                ? "pause"
+                                : "play"
+                            }
+                            size={9}
+                            color={activeEpisode?.id === ep.id ? "#FF6A00" : "#555"}
+                          />
+                          <Text
+                            style={[
+                              styles.durationText,
+                              activeEpisode?.id === ep.id && { color: "#FF6A00" },
+                            ]}
+                          >
+                            {formatDuration(ep.duration)}
+                          </Text>
                         </Pressable>
                       ) : null}
                     </View>
@@ -443,6 +474,11 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: 20,
     marginTop: 8,
+  },
+  durationPillActive: {
+    backgroundColor: "#FFF3EB",
+    borderWidth: 1,
+    borderColor: "#FFD6B8",
   },
   durationText: {
     fontSize: 12,
