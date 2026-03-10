@@ -10,7 +10,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
-import React from "react";
+import React, { useEffect } from "react";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useQuery, useInfiniteQuery } from "@tanstack/react-query";
 import { fetchFeedById, fetchEpisodesByFeedId } from "@/services/podcast-index";
@@ -45,7 +45,7 @@ const PodcastDetails = () => {
     queryFn: () => fetchFeedById(id),
   });
 
-  const { setEpisode, episode: activeEpisode, player, togglePlayback } = usePlayer()
+  const { setEpisode, episode: activeEpisode, player, togglePlayback, setQueue } = usePlayer()
   const playerStatus = useAudioPlayerStatus(player)
 
   const {
@@ -76,6 +76,11 @@ const PodcastDetails = () => {
     });
   })();
   const hasMore = hasNextPage ?? false;
+
+  // Keep the provider queue in sync so next/prev work from the player screen
+  useEffect(() => {
+    if (episodes.length > 0) setQueue(episodes);
+  }, [episodes.length]);
 
   if (isLoading) {
     return (
