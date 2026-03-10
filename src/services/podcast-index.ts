@@ -56,3 +56,8 @@ export async function fetchEpisodesByFeedId(
   const res = await fetchIndex(`/episodes/byfeedid?${params.toString()}`);
   return res.json();
 }
+
+export async function searchPodcasts(term: string): Promise<{ feeds: Feed[] }> {
+  const res = await fetchIndex(`/search/byterm?q=${encodeURIComponent(term)}`);
+  return res.json();
+}

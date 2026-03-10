@@ -19,6 +19,10 @@ export default function TabLayout() {
                 <NativeTabs.Trigger.Icon sf="books.vertical.fill" md="library_books" />
                 <NativeTabs.Trigger.Label>Library</NativeTabs.Trigger.Label>
             </NativeTabs.Trigger>
+            <NativeTabs.Trigger name="search" role='search'>
+                <NativeTabs.Trigger.Icon sf="magnifyingglass" md="search" />
+                <NativeTabs.Trigger.Label>Search</NativeTabs.Trigger.Label>
+            </NativeTabs.Trigger>
 
             {episode && (
                 <NativeTabs.BottomAccessory>
