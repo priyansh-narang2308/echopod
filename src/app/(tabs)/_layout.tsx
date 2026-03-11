@@ -7,8 +7,6 @@ export default function TabLayout() {
     const { episode } = usePlayer();
     const segments = useSegments();
     
-    // Check if the current tab is 'moments'
-    // Segments for (tabs)/moments will be ['(tabs)', 'moments']
     const isMomentsTab = segments[1] === 'moments';
 
     return (

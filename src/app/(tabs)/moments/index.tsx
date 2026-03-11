@@ -17,7 +17,7 @@ export default function MomentsScreen() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
     const [activeIndex, setActiveIndex] = useState(0);
-    const [containerHeight, setContainerHeight] = useState(screenHeight - 150); // initial guess
+    const [containerHeight, setContainerHeight] = useState(screenHeight - 150);
 
     const { data, isLoading, refetch, isRefetching } = useQuery({
         queryKey: ['random-episodes'],
@@ -42,12 +42,10 @@ export default function MomentsScreen() {
             const ep = episodes[activeIndex];
             if (currentEpisode?.guid !== ep.guid) {
                  setEpisode(ep);
-                 // We need to wait a tiny bit for the source to replace before playing
                  setTimeout(() => {
                      player.play();
                  }, 100);
             } else if (!player.playing) {
-                // If it's already the current episode but not playing (e.g. came back to tab)
                 player.play();
             }
         }
