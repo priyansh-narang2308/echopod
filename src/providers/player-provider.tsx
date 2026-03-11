@@ -1,5 +1,6 @@
 import { Episode } from "@/types";
 import { createContext, PropsWithChildren, useCallback, useContext, useRef, useState } from "react";
+import { useDownloadsStore } from "@/store/useDownloadsStore";
 import { AudioPlayer, createAudioPlayer } from "expo-audio"
 
 type PlayerContext = {
@@ -26,13 +27,18 @@ export default function PlayerProvider({ children }: PropsWithChildren) {
     const episodesRef = useRef<Episode[]>([])
     const episodeRef = useRef<Episode | null>(null)
 
+    const getDownload = useDownloadsStore(state => state.getDownload)
+
     const loadEpisode = useCallback((ep: Episode | null) => {
         episodeRef.current = ep
         setEpisodeState(ep)
         if (ep) {
-            player.replace({ uri: ep.enclosureUrl })
+            const guid = ep.guid || String(ep.id)
+            const downloadedEpisode = getDownload(guid)
+            const uriToPlay = downloadedEpisode?.localUri || ep.enclosureUrl
+            player.replace({ uri: uriToPlay })
         }
-    }, [])
+    }, [getDownload])
 
     const setQueue = useCallback((eps: Episode[]) => {
         episodesRef.current = eps

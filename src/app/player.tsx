@@ -6,6 +6,7 @@ import {
   Dimensions,
   Animated,
   StyleSheet,
+  ActivityIndicator,
 } from 'react-native';
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { usePlayer } from '@/providers/player-provider';
@@ -15,6 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Slider from '@react-native-community/slider';
 import { useAudioPlayerStatus } from 'expo-audio';
+import { File, Paths } from 'expo-file-system';
+import { useDownloadsStore } from '@/store/useDownloadsStore';
 
 const { width } = Dimensions.get('window');
 const ARTWORK_SIZE = width * 0.78;
@@ -68,6 +71,9 @@ const EpisodePlayer = () => {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
+  const { addDownload, isDownloaded } = useDownloadsStore();
+  const [isDownloading, setIsDownloading] = useState(false);
+
   // Local slider state — we track the thumb independently while scrubbing
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekValue, setSeekValue] = useState(0);
@@ -103,6 +109,34 @@ const EpisodePlayer = () => {
     const next = SPEEDS[(idx + 1) % SPEEDS.length];
     setSpeed(next);
   }, [speed, setSpeed]);
+
+  const handleDownload = useCallback(async () => {
+    if (!episode) return;
+    const guid = episode.guid || String(episode.id);
+    if (isDownloaded(guid)) return;
+
+    try {
+      setIsDownloading(true);
+      const sanitizedGuid = guid.replace(/[^a-z0-9]/gi, '_');
+      const fileDest = new File(Paths.document, `${sanitizedGuid}.mp3`);
+
+      const downloadedFile = await File.downloadFileAsync(episode.enclosureUrl, fileDest);
+
+      addDownload({
+        guid,
+        title: episode.title,
+        image: episode.image || episode.feedImage || '',
+        feedId: String(episode.feedId),
+        feedTitle: episode.feedTitle,
+        localUri: downloadedFile.uri,
+        downloadedAt: Date.now(),
+      });
+    } catch (error) {
+      console.error('Download failed:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  }, [episode, isDownloaded, addDownload]);
 
   if (!episode) return <Redirect href="/home" />;
 
@@ -157,6 +191,17 @@ const EpisodePlayer = () => {
             <MarqueeText text={episode.title} style={styles.episodeTitle} />
             <Text style={styles.feedTitle} numberOfLines={1}>{episode.feedTitle}</Text>
           </View>
+          <Pressable onPress={handleDownload} style={{ paddingLeft: 12, paddingVertical: 4 }}>
+            {isDownloading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Ionicons
+                name={isDownloaded(episode.guid || String(episode.id)) ? "checkmark-circle" : "download-outline"}
+                size={28}
+                color={isDownloaded(episode.guid || String(episode.id)) ? "#4ADE80" : "rgba(255,255,255,0.75)"}
+              />
+            )}
+          </Pressable>
         </View>
 
         {/* Progress Slider */}

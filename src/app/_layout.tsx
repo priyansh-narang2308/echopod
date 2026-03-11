@@ -4,6 +4,7 @@ import "../../global.css"
 
 import { ClerkProvider, useAuth } from '@clerk/expo'
 import { tokenCache } from '@clerk/expo/token-cache'
+import { resourceCache } from '@clerk/expo/resource-cache'
 
 import { useReactQueryDevTools } from '@dev-plugins/react-query';
 
@@ -48,7 +49,11 @@ const RootLayout = () => {
 
     return (
         <QueryClientProvider client={queryClient}>
-            <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
+            <ClerkProvider
+                __experimental_resourceCache={resourceCache}
+                publishableKey={publishableKey}
+                tokenCache={tokenCache}
+            >
                 <PlayerProvider>
                     <RootStack />
                 </PlayerProvider>
