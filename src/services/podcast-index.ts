@@ -61,3 +61,8 @@ export async function searchPodcasts(term: string): Promise<{ feeds: Feed[] }> {
   const res = await fetchIndex(`/search/byterm?q=${encodeURIComponent(term)}`);
   return res.json();
 }
+
+export async function fetchRandomEpisodes(max: number = 10): Promise<{ episodes: Episode[] }> {
+    const res = await fetchIndex(`/episodes/random?max=${max}&lang=en`);
+    return res.json();
+}
