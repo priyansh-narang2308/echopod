@@ -35,8 +35,7 @@
     ],
     "android": {
       "package": "com.priyanshnarang.echopod",
-      "versionCode": 1,
-      "adaptiveIcon": {
+            "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.jpg",
