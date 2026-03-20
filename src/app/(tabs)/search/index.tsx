@@ -1,6 +1,6 @@
 import { Stack } from 'expo-router'
 import { useState } from 'react'
-import { View, Text, FlatList, ActivityIndicator } from 'react-native'
+import { View, Text, FlatList, ActivityIndicator, Platform, TextInput, TouchableOpacity } from 'react-native'
 import { useQuery } from '@tanstack/react-query'
 import { useDebounce } from '@uidotdev/usehooks'
 import PodcastComponent from '@/components/podcast-component'
@@ -24,14 +24,37 @@ export default function SearchScreen() {
         <View className="flex-1 bg-[#F8F9FA]">
             <Stack.Screen
                 options={{
-                    headerSearchBarOptions: {
+                    headerSearchBarOptions: Platform.OS === 'ios' ? {
                         placeholder: "Search podcasts",
                         onChangeText: (event) => setSearchTerm(event.nativeEvent.text),
                         onClose: () => setSearchTerm(''),
                         hideWhenScrolling: false,
-                    }
+                    } : undefined
                 }}
             />
+
+            {Platform.OS === 'android' && (
+                <View className="px-4 py-3 bg-[#F8F9FA]">
+                    <View className="flex-row items-center bg-white rounded-2xl px-4 py-2 h-14" style={{ elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3 }}>
+                        <Ionicons name="search" size={22} color="#A0A0A0" />
+                        <TextInput
+                            className="flex-1 ml-3 text-base text-gray-800"
+                            placeholder="Search podcasts..."
+                            placeholderTextColor="#A0A0A0"
+                            value={searchTerm}
+                            onChangeText={setSearchTerm}
+                            returnKeyType="search"
+                            autoCapitalize="none"
+                            autoCorrect={false}
+                        />
+                        {searchTerm.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchTerm('')} className="p-1">
+                                <Ionicons name="close-circle" size={22} color="#A0A0A0" />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                </View>
+            )}
 
             {!searchTerm ? (
                 <View className="flex-1 items-center justify-center -mt-20">
